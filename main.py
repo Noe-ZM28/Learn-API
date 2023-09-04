@@ -3,12 +3,10 @@ from requests.models import Response
 from requests.exceptions import RequestException
 from os import getenv
 from dotenv import load_dotenv
-from pprint import pprint as pri
+from pprint import pprint
+from datetime import datetime
 
 load_dotenv()
-
-# url = "http://api.open-notify.org/iss-now.json"
-# url = "http://api.open-notify.org/astros.json"
 
 class Tools:
     def get_response_api(self, url:str, to_JSON:bool= True) -> (Response | dict):
@@ -21,6 +19,26 @@ class Tools:
         except RequestException:
             print("Error en la petición.")
             return None
+
+class data_ISS:
+    def __init__(self)->None:
+        tools = Tools()
+        self.get_response_api = tools.get_response_api
+
+    def get_response_api_ISS(self, to_JSON: bool = True)->(Response | dict):
+        url_api_ISS = "http://api.open-notify.org/iss-now.json"
+        response_api_ISS = self.get_response_api(url = url_api_ISS, to_JSON = to_JSON)
+        return response_api_ISS
+
+    def get_data_ISS_position(self)->tuple:
+        response_api_ISS = self.get_response_api_ISS()
+
+        lon = response_api_ISS["iss_position"]["longitude"]
+        lat = response_api_ISS["iss_position"]["latitude"]
+
+        date = datetime.fromtimestamp(response_api_ISS["timestamp"])
+
+        return lon, lat, date
 
 class data_wheater:
     def __init__(self, lat:float|int, lon:float|int, API_KEY:str)->None:
@@ -95,17 +113,19 @@ class data_wheater:
 
 API_KEY = getenv('API_KEY')
 
-lat = 50.16307
-lon = 8.31338
+lat = 19.5990445
+lon = -99.2615386
 
 print("Latitud: ", lat)
 print("Longitud: ", lon)
 print("\n")
 
-how = data_wheater(
+wheater = data_wheater(
     lat=lat,
     lon=lon,
     API_KEY=API_KEY)
 
-how.get_data()
+wheater.get_data()
 
+ISS = data_ISS()
+ISS.get_response_api_ISS()
