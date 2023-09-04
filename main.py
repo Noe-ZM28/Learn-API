@@ -1,53 +1,97 @@
-import requests
-import json
-
-import os
+from requests import get
+from requests.models import Response
+from requests.exceptions import RequestException
+from os import getenv
 from dotenv import load_dotenv
+from pprint import pprint as pri
 
 load_dotenv()
 
-API_KEY_1 = os.getenv('API_KEY_1')
-API_KEY_2 = os.getenv('API_KEY_2')
+API_KEY_1 = getenv('API_KEY_1')
+API_KEY_2 = getenv('API_KEY_2')
+
 # url = "http://api.open-notify.org/iss-now.json"
 # url = "http://api.open-notify.org/astros.json"
 
+class Tools:
+    def get_response_api(self, url:str, to_JSON:bool= True) -> (Response | dict):
+        try:
+            response = get(url)
+            response.raise_for_status()
+
+            return response.json() if to_JSON else response
+
+        except RequestException:
+            print("Error en la petición.")
+            return None
+
 class wheater:
-    def __init__(self, lat, lon, API_KEY):
+    def __init__(self, lat:float|int, lon:float|int, API_KEY:str):
         self.lat = lat
         self.lon = lon
         self.API_KEY = API_KEY
 
-    def get_url_api(self):
-        url = f"https://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.API_KEY}"
-        return url
-
-    def get_response_api(self):
-        url = self.get_url_api()
-        response = requests.get(url)
-
-        code_response = str(response.status_code)
-        info_response = response.json()
-
-        # if code_response[0] == "2":pass
-        weather = info_response['weather'][0]['description']
-        where = info_response['name']
-        return where, weather
-
-    def get_weather(self):
-        try:
-            where, weather = self.get_response_api()
-            print(f"->How is the weather like today in {where}?\n->There are {weather}")
-        except requests.exceptions.RequestException as e:
-            print("Error while making the API request:", e)
+        tools = Tools()
+        self.get_response_api = tools.get_response_api
 
 
-lat = 35.0000000000
-lon = 105.0000000000
+    def get_response_api_weather(self, API_KEY:str, lat:float|int, lon:float|int, units:str= "metric", to_JSON:bool = True)->(Response | dict):
+        url_api_weather = f"https://api.openweathermap.org/data/2.5/weather?&units={units}&lat={lat}&lon={lon}&appid={API_KEY}"
+        print(url_api_weather)
+
+        weather_response = self.get_response_api(url= url_api_weather, to_JSON= to_JSON)
+
+        return weather_response
+
+    def get_response_api_geocoding(self, API_KEY:str, lat:float|int, lon:float|int, limit:int= 5, to_JSON:bool = True)->(Response | dict):
+        url_api_geocoding = f"http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit={limit}&appid={API_KEY}"
+        print(url_api_geocoding)
+
+        geocoding_response = self.get_response_api(url= url_api_geocoding, to_JSON= to_JSON)
+
+        return geocoding_response
+
+    def get_response_api_info_countries(self, code_country:str, to_JSON:bool= True)->(Response | dict):
+        url_decode_name = f"https://restcountries.com/v3.1/alpha/{code_country}"
+        print(url_decode_name)
+
+        decode_name_response = self.get_response_api(url= url_decode_name, to_JSON= to_JSON)
+
+        return decode_name_response
+
+    def get_data(self):
+        response_api_weather = self.get_response_api_weather(
+            API_KEY=self.API_KEY,
+            lat=self.lat,
+            lon=self.lon)
+
+        response_api_geocoding = self.get_response_api_geocoding(
+            API_KEY=self.API_KEY,
+            lat=self.lat,
+            lon=self.lon)
+
+        name_location = response_api_weather["name"]
+        print("")
+        weather_location = response_api_weather['weather'][0]
+        clouds_level_location = response_api_weather['clouds']["all"]
+        wind_location = response_api_weather['wind']
+        code_country = response_api_weather['sys']['country']
+
+        response_api_decode_name = self.get_response_api_info_countries(code_country=code_country)
+        data_country = response_api_decode_name[0]
+
+        decode_code_country = data_country["translations"]["spa"]["common"]
+        flag_country = data_country["flags"]["png"]
+
+
+
+lat = 45.12
+lon = -38.62083
 
 how = wheater(
     lat=lat,
     lon=lon,
     API_KEY=API_KEY_1)
 
-how.get_weather()
+how.get_data()
 
