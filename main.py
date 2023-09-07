@@ -3,13 +3,29 @@ from requests.models import Response
 from requests.exceptions import RequestException
 from os import getenv
 from dotenv import load_dotenv
-from pprint import pprint
 from datetime import datetime
+from pprint import pprint
 
 load_dotenv()
 
 class Tools:
-    def get_response_api(self, url:str, to_JSON:bool= True) -> (Response | dict):
+    def validate_coords(self, lat:float|int, lon:float|int,) -> bool:
+        """
+            Latitud:
+
+            La latitud varía de -90° (para el Polo Sur) a +90° (para el Polo Norte).
+            Una latitud válida estará dentro de este rango.
+
+            Longitud:
+
+            La longitud varía de -180° (para la longitud occidental) a +180° (para la longitud oriental).
+        """
+        return True if -90 <= lat <= 90 and -180 <= lon <= 180 else False    
+
+class API_reponse:
+    def construc_url(self, **kwars)->str: ...
+
+    def get_response_api(self, url:str, to_JSON:bool= True) -> Response | dict | str:
         try:
             response = get(url)
             response.raise_for_status()
@@ -20,101 +36,51 @@ class Tools:
             print("Error en la petición.")
             return None
 
-class data_ISS:
-    def __init__(self)->None:
-        tools = Tools()
-        self.get_response_api = tools.get_response_api
 
-    def get_response_api_ISS(self, to_JSON: bool = True)->(Response | dict):
-        url_api_ISS = "http://api.open-notify.org/iss-now.json"
-        response_api_ISS = self.get_response_api(url = url_api_ISS, to_JSON = to_JSON)
-        return response_api_ISS
-
-    def get_data_ISS_position(self)->tuple:
-        response_api_ISS = self.get_response_api_ISS()
-
-        lon = response_api_ISS["iss_position"]["longitude"]
-        lat = response_api_ISS["iss_position"]["latitude"]
-
-        date = datetime.fromtimestamp(response_api_ISS["timestamp"])
-
-        return lon, lat, date
-
-class data_wheater:
-    def __init__(self, lat:float|int, lon:float|int, API_KEY:str)->None:
-        self.lat = lat
-        self.lon = lon
+class WeatherData(API_reponse, Tools):
+    def __init__(self, API_KEY:str)->None:
         self.API_KEY = API_KEY
 
-        tools = Tools()
-        self.get_response_api = tools.get_response_api
+    def construc_url(self, lat:float|int, lon:float|int, units:str= "metric") -> Response | dict:
 
-    def get_response_api_weather(self, API_KEY:str, lat:float|int, lon:float|int, units:str= "metric", to_JSON:bool = True)->(Response | dict):
-        url_api_weather = f"https://api.openweathermap.org/data/2.5/weather?&units={units}&lat={lat}&lon={lon}&appid={API_KEY}"
+        url_api_weather = f"https://api.openweathermap.org/data/2.5/weather?&units={units}&lat={lon}&lon={lat}&appid={self.API_KEY}"
 
-        weather_response = self.get_response_api(url= url_api_weather, to_JSON= to_JSON)
+        return url_api_weather if self.validate_coords(lat=lat, lon=lon) else None
 
-        return weather_response
+    def get_response_api_weather_icon(self, name_icon:str) -> str:
 
-    def get_response_api_weather_icon(self, name_icon:str)->str:
         path_icon = f"https://openweathermap.org/img/wn/{name_icon}@2x.png"
         return path_icon
 
-    def get_response_api_geocoding(self, API_KEY:str, lat:float|int, lon:float|int, limit:int= 5, to_JSON:bool = True)->(Response | dict):
-        url_api_geocoding = f"http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit={limit}&appid={API_KEY}"
+class GeoDataLocation(API_reponse, Tools):
+    def __init__(self, API_KEY:str)->None:
+        self.API_KEY = API_KEY
 
-        geocoding_response = self.get_response_api(url= url_api_geocoding, to_JSON= to_JSON)
+    def construc_url(self, lat:float|int, lon:float|int, limit:int= 1) -> Response | dict:
+        url_api_geodata = f"http://api.positionstack.com/v1/reverse?access_key={self.API_KEY}&query={lat},{lon}&limit={limit}"
+        print(url_api_geodata)
 
-        return None if geocoding_response == [] else geocoding_response
+        return url_api_geodata if self.validate_coords(lat=lat, lon=lon) else None
 
-    def get_response_api_info_countries(self, code_country:str, to_JSON:bool= True)->(Response | dict):
-        url_decode_name = f"https://restcountries.com/v3.1/alpha/{code_country}"
-        decode_name_response = self.get_response_api(url= url_decode_name, to_JSON= to_JSON)
+class GeoDataCountry(API_reponse):
+    def __init__(self, API_KEY:str)->None:
+        self.API_KEY = API_KEY
 
-        return decode_name_response
+    def construc_url(self, code_country:str, to_JSON:bool= True) -> Response | dict:
+        url_api_geodata_other = f"https://restcountries.com/v3.1/alpha/{code_country}"
 
-    def get_data(self):
-        response_api_weather = self.get_response_api_weather(
-            API_KEY=self.API_KEY,
-            lat=self.lat,
-            lon=self.lon)
+        return url_api_geodata_other
 
-        response_api_geocoding = self.get_response_api_geocoding(
-            API_KEY=self.API_KEY,
-            lat=self.lat,
-            lon=self.lon)
+class ISSData(API_reponse):
 
-        print("\n\n")
-        name_location = response_api_weather["name"]
-        print("nombre del lugar: ", name_location)
+    def get_ISS_position(self, response_api:dict) -> tuple:
 
-        weather_data_location = response_api_weather['weather'][0]
+        lon = response_api["iss_position"]["longitude"]
+        lat = response_api["iss_position"]["latitude"]
 
-        path_icon = self.get_response_api_weather_icon(weather_data_location["icon"])
-        print("icono del clima del lugar: ", path_icon)
+        date = datetime.fromtimestamp(response_api["timestamp"])
 
-        print("informacion del clima del lugar: ", weather_data_location)
-
-        clouds_level_location = response_api_weather['clouds']["all"]
-        print("nivel de nubes del lugar: ", clouds_level_location)
-
-        wind_data_location = response_api_weather['wind']
-        print("datos del viento del lugar: ", wind_data_location)
-
-        code_country = response_api_weather['sys']['country']
-        print("Codigo del pais: ", code_country)
-
-        response_api_decode_name = self.get_response_api_info_countries(code_country=code_country)
-        data_country = response_api_decode_name[0]
-        state_location = response_api_geocoding[0]["state"]
-        print("nombre del estado: ", state_location)
-        name_country = data_country["translations"]["cym"]["common"]
-        print("Nombre del pais: ", name_country)
-
-        flag_country = data_country["flags"]["png"]
-        print("Bandera del pais: ", flag_country)
-
-        print(f"\n\n\n{name_location}, {state_location}, {name_country} -> {weather_data_location['description']}\n")
+        return lon, lat, date
 
 
 API_KEY_OPENWEATHER = getenv('API_KEY_OPENWEATHER')
@@ -127,13 +93,6 @@ print("Latitud: ", lat)
 print("Longitud: ", lon)
 print("\n")
 
-wheater = data_wheater(
-    lat=lat,
-    lon=lon,
-    API_KEY=API_KEY_OPENWEATHER)
+geo = GeoDataCountry(API_KEY_POSITIONSTACK)
 
-wheater.get_data()
-
-ISS = data_ISS()
-ISS.get_response_api_ISS()
-
+pprint(geo.get_response_api(geo.construc_url("JPN")))
