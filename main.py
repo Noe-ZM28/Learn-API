@@ -9,7 +9,7 @@ from pprint import pprint
 load_dotenv()
 
 class Tools:
-    def validate_coords(self, lat:float|int, lon:float|int,) -> bool:
+    def validate_coords(self, lat:float|int, lon:float|int) -> bool:
         """
             Latitud:
 
@@ -27,12 +27,14 @@ class API_reponse:
 
     def get_response_api(self, url:str, to_JSON:bool= True) -> Response | dict | str:
         try:
+            print(url)
             response = get(url)
             response.raise_for_status()
 
             return response.json() if to_JSON else response
 
-        except RequestException:
+        except RequestException as e:
+            print(e)
             print("Error en la petición.")
             return None
 
@@ -43,7 +45,7 @@ class WeatherData(API_reponse, Tools):
 
     def construc_url(self, lat:float|int, lon:float|int, units:str= "metric") -> Response | dict:
 
-        url_api_weather = f"https://api.openweathermap.org/data/2.5/weather?&units={units}&lat={lon}&lon={lat}&appid={self.API_KEY}"
+        url_api_weather = f"https://api.openweathermap.org/data/2.5/weather?&units={units}&lat={lat}&lon={lon}&appid={self.API_KEY}"
 
         return url_api_weather if self.validate_coords(lat=lat, lon=lon) else None
 
@@ -58,20 +60,28 @@ class GeoDataLocation(API_reponse, Tools):
 
     def construc_url(self, lat:float|int, lon:float|int, limit:int= 1) -> Response | dict:
         url_api_geodata = f"http://api.positionstack.com/v1/reverse?access_key={self.API_KEY}&query={lat},{lon}&limit={limit}"
-        print(url_api_geodata)
 
         return url_api_geodata if self.validate_coords(lat=lat, lon=lon) else None
 
 class GeoDataCountry(API_reponse):
-    def __init__(self, API_KEY:str)->None:
-        self.API_KEY = API_KEY
 
-    def construc_url(self, code_country:str, to_JSON:bool= True) -> Response | dict:
+    def construc_url(self, code_country:str) -> Response | dict:
         url_api_geodata_other = f"https://restcountries.com/v3.1/alpha/{code_country}"
 
-        return url_api_geodata_other
+        return url_api_geodata_other if code_country is not None else None
 
 class ISSData(API_reponse):
+    def get_response_api(self, url:str= "http://api.open-notify.org/iss-now.json", to_JSON:bool= True) -> Response | dict:
+        try:
+            response = get(url)
+            response.raise_for_status()
+
+            return response.json() if to_JSON else response
+
+        except RequestException as e:
+            print(e)
+            print("Error en la petición.")
+            return None
 
     def get_ISS_position(self, response_api:dict) -> tuple:
 
@@ -86,13 +96,34 @@ class ISSData(API_reponse):
 API_KEY_OPENWEATHER = getenv('API_KEY_OPENWEATHER')
 API_KEY_POSITIONSTACK = getenv('API_KEY_POSITIONSTACK')
 
-lat = 38.642388
-lon = 139.848588
+lat = 48.393581
+lon = -24.157794
 
 print("Latitud: ", lat)
 print("Longitud: ", lon)
-print("\n")
+print("\n\n")
 
-geo = GeoDataCountry(API_KEY_POSITIONSTACK)
+data_1 = WeatherData(API_KEY_OPENWEATHER)
 
-pprint(geo.get_response_api(geo.construc_url("JPN")))
+pprint(data_1.get_response_api(data_1.construc_url(lat,lon)))
+print("\n\n")
+
+data_2 = GeoDataLocation(API_KEY_POSITIONSTACK)
+pprint(data_2.get_response_api(data_2.construc_url(lat,lon)))
+country_code = data_2.get_response_api(data_2.construc_url(lat,lon))["data"][0]["country_code"]
+
+print("\n\n")
+print()
+
+if country_code:
+    data_3 = GeoDataCountry()
+    pprint(data_3.get_response_api(data_3.construc_url(country_code)))
+    print("\n\n")
+else:
+    print("Sin información para el país")
+    print("\n\n")
+
+data_4 = ISSData()
+pprint(data_4.get_ISS_position(data_4.get_response_api()))
+print("\n\n")
+
