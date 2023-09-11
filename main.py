@@ -1,12 +1,8 @@
 from requests import get
 from requests.models import Response
 from requests.exceptions import RequestException
-from os import getenv
-from dotenv import load_dotenv
 from datetime import datetime
-from pprint import pprint
 
-load_dotenv()
 
 class Tools:
     def validate_coords(self, lat:float|int, lon:float|int) -> bool:
@@ -92,6 +88,10 @@ class ISSData(API_reponse):
 
         return lon, lat, date
 
+from pprint import pprint
+from os import getenv
+from dotenv import load_dotenv
+load_dotenv()
 
 API_KEY_OPENWEATHER = getenv('API_KEY_OPENWEATHER')
 API_KEY_POSITIONSTACK = getenv('API_KEY_POSITIONSTACK')
