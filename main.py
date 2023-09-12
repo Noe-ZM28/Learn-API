@@ -21,7 +21,7 @@ class Tools:
 class API_reponse:
     def construc_url(self, **kwars)->str: ...
 
-    def get_response_api(self, url:str, to_JSON:bool= True) -> Response | dict | str:
+    def get_response_api(self, url:str, to_JSON:bool= True) -> Response | dict | None:
         try:
             print(url)
             response = get(url)
@@ -39,9 +39,9 @@ class WeatherData(API_reponse, Tools):
     def __init__(self, API_KEY:str)->None:
         self.API_KEY = API_KEY
 
-    def construc_url(self, lat:float|int, lon:float|int, units:str= "metric") -> Response | dict:
+    def construc_url(self, lat:float|int, lon:float|int, units:str= "metric") -> Response | dict | None:
 
-        url_api_weather = f"https://api.openweathermap.org/data/2.5/weather?&units={units}&lat={lat}&lon={lon}&appid={self.API_KEY}"
+        url_api_weather = f"https://api.openweathermap.org/data/2.5/weather?appid={self.API_KEY}&units={units}&lat={lat}&lon={lon}"
 
         return url_api_weather if self.validate_coords(lat=lat, lon=lon) else None
 
@@ -54,37 +54,32 @@ class GeoDataLocation(API_reponse, Tools):
     def __init__(self, API_KEY:str)->None:
         self.API_KEY = API_KEY
 
-    def construc_url(self, lat:float|int, lon:float|int, limit:int= 1) -> Response | dict:
+    def construc_url(self, lat:float|int, lon:float|int, limit:int= 1) -> Response | dict | None:
         url_api_geodata = f"http://api.positionstack.com/v1/reverse?access_key={self.API_KEY}&query={lat},{lon}&limit={limit}"
 
         return url_api_geodata if self.validate_coords(lat=lat, lon=lon) else None
 
 class GeoDataCountry(API_reponse):
 
-    def construc_url(self, code_country:str) -> Response | dict:
+    def construc_url(self, code_country:str) -> Response | dict | None:
         url_api_geodata_other = f"https://restcountries.com/v3.1/alpha/{code_country}"
 
         return url_api_geodata_other if code_country is not None else None
 
 class ISSData(API_reponse):
-    def get_response_api(self, url:str= "http://api.open-notify.org/iss-now.json", to_JSON:bool= True) -> Response | dict:
-        try:
-            response = get(url)
-            response.raise_for_status()
+    def __init__(self) -> None:
+        url= "http://api.open-notify.org/iss-now.json"
+        self.response_api = self.get_response_api(url)
 
-            return response.json() if to_JSON else response
+    def get_ISS_position(self) -> tuple | None:
 
-        except RequestException as e:
-            print(e)
-            print("Error en la petición.")
+        if self.response_api is None:
             return None
 
-    def get_ISS_position(self, response_api:dict) -> tuple:
+        lon = self.response_api["iss_position"]["longitude"]
+        lat = self.response_api["iss_position"]["latitude"]
 
-        lon = response_api["iss_position"]["longitude"]
-        lat = response_api["iss_position"]["latitude"]
-
-        date = datetime.fromtimestamp(response_api["timestamp"])
+        date = datetime.fromtimestamp(self.response_api["timestamp"])
 
         return lon, lat, date
 
@@ -120,7 +115,7 @@ if country_code:
     pprint(data_3.get_response_api(data_3.construc_url(country_code)))
     print("\n\n")
 else:
-    print("Sin información para el país")
+    print("Sin información")
     print("\n\n")
 
 data_4 = ISSData()
