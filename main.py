@@ -68,8 +68,8 @@ class GeoDataCountry(API_reponse):
 
 class ISSData(API_reponse):
     def __init__(self) -> None:
-        url= "http://api.open-notify.org/iss-now.json"
-        self.response_api = self.get_response_api(url)
+        self.url= "http://api.open-notify.org/iss-now.json"
+        self.response_api = self.get_response_api(self.url)
 
     def get_ISS_position(self) -> tuple | None:
 
@@ -91,8 +91,10 @@ load_dotenv()
 API_KEY_OPENWEATHER = getenv('API_KEY_OPENWEATHER')
 API_KEY_POSITIONSTACK = getenv('API_KEY_POSITIONSTACK')
 
-lat = 48.393581
-lon = -24.157794
+lat = 19.599083
+lon = -99.261550
+
+
 
 print("Latitud: ", lat)
 print("Longitud: ", lon)
@@ -119,6 +121,6 @@ else:
     print("\n\n")
 
 data_4 = ISSData()
-pprint(data_4.get_ISS_position(data_4.get_response_api()))
+pprint(data_4.get_ISS_position())
 print("\n\n")
 
